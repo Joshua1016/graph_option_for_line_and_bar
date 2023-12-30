@@ -111,100 +111,90 @@ require_once('../layout/loader.php');
     <div class="col-md-12">
       <br>
       <button onclick="toggleChartType()">Toggle Chart Type</button>
-
-      <canvas id="myLineChart" width="400" height="150"></canvas>
+      <canvas id="myChart" width="400" height="150"></canvas>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <script>
-    var ctxLine = document.getElementById('myLineChart').getContext('2d');
-    var myLineChart;
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart;
 
-    function updateLineChart(transactionDates, grsCaneDailyTotal, netCaneDailyTotal) {
-        if (myLineChart) {
-            myLineChart.destroy();
-        }
+        function updateChart(transactionDates, grsCaneDailyTotal, netCaneDailyTotal, chartType) {
+          if (myChart) {
+            myChart.destroy();
+          }
 
-        myLineChart = new Chart(ctxLine, {
-            type: 'line',
+          var chartConfig = {
+            type: chartType,
             data: {
-                labels: transactionDates.map(week => "" + week), // Add "week " before each value
-                datasets: [{
-                    label: 'Total grscane',
-                    data: grsCaneDailyTotal,
-                    backgroundColor: 'red',
-                    borderColor: 'red',
-                    borderWidth: 5,
-                    fill: false
-                }, {
-                    label: 'Total Netcane',
-                    data: netCaneDailyTotal,
-                    backgroundColor: 'green',
-                    borderColor: 'green',
-                    borderWidth: 5,
-                    fill: false
-                }]
+              labels: transactionDates.map(week => "" + week),
+              datasets: [{
+                label: 'Total grscane',
+                data: grsCaneDailyTotal,
+                backgroundColor: 'red',
+                borderColor: 'red',
+                borderWidth: 1,
+                fill: false
+              }, {
+                label: 'Total Netcane',
+                data: netCaneDailyTotal,
+                backgroundColor: 'green',
+                borderColor: 'green',
+                borderWidth: 1,
+                fill: false
+              }]
             },
             options: {
-                scales: {
-                    x: {
-                        ticks: {
-                            autoSkip: false,
-                            maxRotation: 45,
-                            minRotation: 0
-                        }
-                    },
-                    y: {
-                        beginAtZero: true
-                    }
+              scales: {
+                x: {
+                  ticks: {
+                    autoSkip: false,
+                    maxRotation: 45,
+                    minRotation: 0
+                  }
+                },
+                y: {
+                  beginAtZero: true
                 }
+              }
             }
-        });
-    }
+          };
 
-    $(document).ready(function () {
-        var table = $('#example').DataTable({
+          myChart = new Chart(ctx, chartConfig);
+        }
+
+        $(document).ready(function() {
+          var table = $('#example').DataTable({
             "lengthChange": false,
             "searching": false,
             "pageLength": 16,
             "responsive": true,
-            "drawCallback": function (settings) {
-                var api = this.api();
-                var grsCaneDailyTotal = [];
-                var netCaneDailyTotal = [];
-                var transactionDates = [];
+            "drawCallback": function(settings) {
+              var api = this.api();
+              var grsCaneDailyTotal = [];
+              var netCaneDailyTotal = [];
+              var transactionDates = [];
 
-                api.rows({
-                    page: 'current'
-                }).every(function () {
-                    var data = this.data();
-                    transactionDates.push(data[1]); // Assuming the week is in the second column
-                    grsCaneDailyTotal.push(parseFloat(data[2].replace(',', '')) || 0);
-                    netCaneDailyTotal.push(parseFloat(data[3].replace(',', '')) || 0);
-                });
+              api.rows({
+                page: 'current'
+              }).every(function() {
+                var data = this.data();
+                transactionDates.push(data[1]); // Assuming the week is in the second column
+                grsCaneDailyTotal.push(parseFloat(data[2].replace(',', '')) || 0);
+                netCaneDailyTotal.push(parseFloat(data[3].replace(',', '')) || 0);
+              });
 
-                // Debugging information
-                console.log('Transaction Dates:', transactionDates);
-                console.log('Gross Cane Data:', grsCaneDailyTotal);
-                console.log('Net Cane Data:', netCaneDailyTotal);
-
-                updateLineChart(transactionDates, grsCaneDailyTotal, netCaneDailyTotal);
+              // Default to line chart
+              updateChart(transactionDates, grsCaneDailyTotal, netCaneDailyTotal, 'bar');
             }
+          });
         });
-    });
 
-    // Function to toggle between bar and line chart
-    function toggleChartType() {
-        if (myLineChart.config.type === 'line') {
-            // Switch to bar chart
-            myLineChart.config.type = 'bar';
-            myLineChart.update();
-        } else {
-            // Switch to line chart
-            myLineChart.config.type = 'line';
-            myLineChart.update();
+        function toggleChartType() {
+          var chartType = (myChart.config.type === 'line') ? 'bar' : 'line';
+
+          myChart.config.type = chartType;
+          myChart.update();
         }
-    }
-</script>
-
-
+      </script>
     </div>
 
     <h1 style="text-align: center; font-family: cursive; color: darkred;">
@@ -215,8 +205,7 @@ require_once('../layout/loader.php');
 
     </h1>
   </div>
-</div>
 
-<?php
-require_once('../layout/footer.php');
-?>
+  <?php
+  require_once('../layout/footer.php');
+  ?>
