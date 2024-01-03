@@ -1,0 +1,236 @@
+<?php
+require_once '../libraries/database.php';
+require_once '../models/VarietyModel.php';
+
+$dbObj = new Database();
+$dbConnection = $dbObj->openConnection();
+$userObj = new Variety($dbConnection);
+
+$userList = $userObj->fetchAll();
+$fetchtotal = $userObj->fetchTotal();
+
+require_once('../layout/header.php');
+// loader
+require_once('../layout/loader.php');
+?>
+
+<style>
+    .odd td a {
+        color: blue;
+        padding: 3px;
+        text-decoration: underline;
+    }
+
+    .even td a {
+        color: blue;
+        padding: 3px;
+        text-decoration: underline;
+    }
+
+    #content {
+        /* Adjust the container styles as needed */
+        width: 100%;
+    }
+
+    .active>.page-link,
+    .page-link.active {
+        color: black;
+        background-color: gold;
+        border-color: black;
+    }
+
+    .page-link {
+        color: black;
+    }
+
+    .table-container {
+        max-height: 800px;
+        /* Set your desired maximum height */
+        overflow-y: auto;
+        /* Enable vertical scrolling */
+    }
+
+    #example_wrapper {
+        display: none;
+    }
+
+    h1 {
+        font-weight: bolder;
+    }
+
+    h2 {
+        font-weight: bolder;
+    }
+
+    #toggleChartButton {
+        border-radius: 10px;
+    }
+</style>
+
+
+
+
+<div class="container-fluid">
+    <h1 style="text-align: center; font-family: cursive">
+        Variety Graph Details <br>
+    </h1>
+    <div class="row">
+        <div class="col-md-5">
+            <div class="table-responsive table-container">
+                <table id="example" class="table table-striped custom-table" width="100%">
+                    <!-- ... table content ... -->
+
+                    <thead class="responsive" style="text-align: center;">
+                        <th></th>
+                        <th>Week</th>
+                        <th>Gross Cane</th>
+                        <th>Net Cane</th>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $transactionDates = [];
+                        $grsCaneDailyTotal = [];
+                        $netCaneDailyTotal = [];
+
+
+                        foreach ($userList as $item) {
+                            $transactionDates[] = $item['week'];
+                            $grsCaneDailyTotal[] = $item['total_grscane'];
+                            $netCaneDailyTotal[] = $item['netcane'];
+
+                            echo "<tr>";
+                            // Added a "View" link in the first column
+                            echo '<td><a href="variety_details.php?TargetWeek=' . $item['week'] . '">' . "view" . '</a></td>';
+                            echo '<td>' . $item['week'] . '</td>';
+                            echo '<td>' . $item['total_grscane'] . '</td>';
+                            echo '<td>' . $item['netcane'] . '</td>';
+                            echo "</tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-12">
+            <br>
+            <div class="d-flex justify-content-end mb-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="toggleChartSwitch" onchange="toggleChartType()">
+                    <label class="form-check-label" for="toggleChartSwitch" id="chartSwitchLabel">
+                        Line Graph <i class="bi bi-graph-up-arrow"></i>
+                    </label>
+                </div>
+            </div>
+            <canvas id="myChart" width="400" height="150"></canvas>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script>
+                var ctx = document.getElementById('myChart').getContext('2d');
+                var myChart;
+                var chartType = 'bar'; // Default chart type
+                var transactionDates = [];
+                var grsCaneDailyTotal = [];
+                var netCaneDailyTotal = [];
+
+                function updateChart(chartType) {
+                    if (myChart) {
+                        myChart.destroy();
+                    }
+
+                    var chartConfig = {
+                        type: chartType,
+                        data: {
+                            labels: transactionDates.map(week => "" + week),
+                            datasets: [{
+                                label: 'Total grscane',
+                                data: grsCaneDailyTotal,
+                                backgroundColor: 'rgb(255, 99, 132)',
+                                borderColor: 'rgb(255, 99, 132)',
+                                borderWidth: 1,
+                                fill: false
+                            }, {
+                                label: 'Total Netcane',
+                                data: netCaneDailyTotal,
+                                backgroundColor: 'rgb(75, 192, 192)',
+                                borderColor: 'grgb(75, 192, 192)',
+                                borderWidth: 1,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    ticks: {
+                                        autoSkip: false,
+                                        maxRotation: 45,
+                                        minRotation: 0
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    };
+
+                    myChart = new Chart(ctx, chartConfig);
+                    updateToggleChartSwitch(chartType);
+                }
+
+                function updateToggleChartSwitch(chartType) {
+                    var switchLabel = document.getElementById('chartSwitchLabel');
+                    switchLabel.innerHTML = (chartType === 'line')
+                        ? 'Line Graph <i class="bi bi-graph-up-arrow"></i>'
+                        : 'Bar Graph <i class="bi bi-bar-chart-fill"></i>';
+                }
+
+                $(document).ready(function () {
+                    var table = $('#example').DataTable({
+                        "lengthChange": false,
+                        "searching": false,
+                        "pageLength": 16,
+                        "responsive": true,
+                        "drawCallback": function (settings) {
+                            var api = this.api();
+                            transactionDates = [];
+                            grsCaneDailyTotal = [];
+                            netCaneDailyTotal = [];
+
+                            api.rows({
+                                page: 'current'
+                            }).every(function () {
+                                var data = this.data();
+                                transactionDates.push(data[1]); // Assuming the week is in the second column
+                                grsCaneDailyTotal.push(parseFloat(data[2].replace(',', '')) || 0);
+                                netCaneDailyTotal.push(parseFloat(data[3].replace(',', '')) || 0);
+                            });
+
+                            // Default to bar chart
+                            updateChart('bar');
+                            updateToggleChartSwitch('bar');  // Set the correct switch state initially
+                        }
+                    });
+                });
+
+                function toggleChartType() {
+                    chartType = (chartType === 'line') ? 'bar' : 'line';
+                    updateToggleChartSwitch(chartType);
+                    updateChart(chartType);
+                }
+            </script>
+        </div>
+
+
+
+        <h1 style="text-align: center; font-family: cursive; color: darkred;">
+            <?php
+            echo "<h2 style='text-align: center; font-family: cursive; color: dark;'>GROSS_CANE Total: <span style='color: darkred; font-weight: bolder'>" . $fetchtotal['grscane'] . "</span></h2>";
+            echo "<h2 style='text-align: center; font-family: cursive; color: dark;'>NET_CANE Total: <span style='color: darkred; font-weight: bolder'>" . $fetchtotal['netcane'] . "</span></h2>";
+            ?>
+
+        </h1>
+    </div>
+
+    <?php
+    require_once('../layout/footer.php');
+    ?>
